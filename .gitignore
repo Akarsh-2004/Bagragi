@@ -17,6 +17,9 @@ Thumbs.db
 logs/
 *.log
 
+
+.zip 
+
 # Runtime
 pids/
 *.pid

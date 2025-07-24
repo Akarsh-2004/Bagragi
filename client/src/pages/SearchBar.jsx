@@ -68,7 +68,7 @@ function SearchBar({ onLocationSelect }) {
         placeholder="Enter the place you wish to tour.."
         value={query}
         onChange={handleInputChange}
-        className="block mx-auto px-5 py-3 w-[350px] border-4 border-black rounded-full"
+        className="block mx-auto px-5 py-3 w-[350px] border-4 border-black rounded-full bg-white"
       />
 
       {/* Suggestions */}
@@ -120,7 +120,7 @@ function SearchBar({ onLocationSelect }) {
 
           {/* Map View */}
           {location && (
-            <div className="w-[350px] h-[300px] mx-auto mt-4 border-2 border-black rounded-xl overflow-hidden">
+            <div className="w-[550px] h-[300px] mx-auto mt-4 border-2 border-black rounded-xl overflow-hidden">
               <iframe
                 title="map"
                 width="100%"

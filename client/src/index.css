@@ -3,4 +3,9 @@
 
 body {
     font-family: "Winky Rough" , cursive;
+    background-image: url('/bg.jpg'); /* path relative to public folder */
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-attachment: fixed;
 }

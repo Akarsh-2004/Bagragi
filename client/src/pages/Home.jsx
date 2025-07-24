@@ -1,6 +1,8 @@
 import React, { Suspense, useState, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, useGLTF } from '@react-three/drei';
+import LoginModal from '../components/LoginModal';
+import AuthForm from '../components/Authform';
 import SearchBar from './SearchBar';
 
 function Earth() {
@@ -26,6 +28,8 @@ const locations = {
 };
 
 function Home() {
+  const [user, setUser] = useState(null);
+  const [showLogin, setShowLogin] = useState(false);
   const [location, setLocation] = useState('');
   const [imageLocation, setImageLocation] = useState('');
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -42,8 +46,21 @@ function Home() {
   }, [slider]);
 
   return (
-    <div className="bg-white inset-0 flex flex-col items-center">
-      <h1 className='text-center pt-10 pb-4 text-6xl tracking-widest'>B A G R A G I</h1>
+    <div className="inset-0 flex flex-col items-center">
+      {!user ? (
+        <AuthForm onAuthSuccess={(user) => setUser(user)} />
+      ) : (
+        <h2 className="text-white text-2xl p-4">Welcome, {user.name}!</h2>
+      )}
+      <button
+        onClick={() => setShowLogin(true)}
+        className="fixed top-4 right-4 px-5 py-2 bg-white text-black rounded-full hover:bg-blue-700"
+      >
+        Login
+      </button>
+
+      {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
+      <h1 className='text-center pt-10 pb-4 text-6xl tracking-widest text-white shadow-lg'>B A G R A G I</h1>
 
       {/* 3D Earth */}
       <div className="w-full h-[350px]">
@@ -69,11 +86,11 @@ function Home() {
 {location && (
   <div className='flex flex-col w-full mt-20 items-center'>
     <div className='text-center mb-10'>
-      <h1 className='text-4xl font-extrabold text-blue-900 tracking-wide'>📍 Location: {location}</h1>
+      <h1 className='text-4xl font-extrabold text-white tracking-wide'>📍 Location: {location}</h1>
     </div>
 
     {slider.length > 0 ? (
-      <div className='flex flex-col items-center justify-center bg-gradient-to-br from-blue-200 to-white p-6 rounded-2xl shadow-xl'>
+      <div className='flex flex-col items-center justify-center bg-gradient-to-br from-blue-200 to-white p-6 rounded-2xl shadow-xl border-2 border-black'>
         <img
           src={slider[currentSlide].img}
           alt={`Slide ${currentSlide + 1}`}
@@ -96,6 +113,7 @@ function Home() {
   <button className="border border-black px-5 py-3 rounded-full bg-green-200 hover:bg-green-400 transition-all duration-200 font-semibold">History</button>
   <button className="border border-black px-5 py-3 rounded-full bg-green-200 hover:bg-green-400 transition-all duration-200 font-semibold">FAQs</button>
 </div>
+
 
 
     </div>

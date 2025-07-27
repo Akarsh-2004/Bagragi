@@ -49,3 +49,64 @@ temp/
 # Testing
 jest-coverage/
 .nyc_output/
+
+
+# -------------------------------
+# React / Frontend
+# -------------------------------
+*.log
+node_modules/
+build/
+dist/
+.cache/
+.DS_Store
+.env
+.env.local
+.env.*.local
+
+# -------------------------------
+# IDEs & Editors
+# -------------------------------
+.vscode/
+.idea/
+*.sw?
+*.sublime-project
+*.sublime-workspace
+
+# -------------------------------
+# OS / Miscellaneous
+# -------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+*.bak
+*.tmp
+
+# -------------------------------
+# Git / GitHub
+# -------------------------------
+*.orig
+*.patch
+*.rej
+*.swo
+*.swp
+*.gz
+*.zip
+*.tar
+*.tgz
+*.7z
+
+# -------------------------------
+# Optional - Git LFS trackable
+# -------------------------------
+*.psd
+*.png
+*.jpg
+*.jpeg
+*.mp4
+*.mov
+*.mkv
+*.pkl
+*.h5
+*.pt
+*.onnx

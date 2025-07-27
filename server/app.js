@@ -8,7 +8,11 @@ const inflationRoutes = require('./routes/inflation.routes');
 const costRoutes = require('./routes/cost.route');
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true
+}));
+
 app.use(express.json());
 
 // Mount auth routes at /api
@@ -20,3 +24,6 @@ app.use('/api/cost', costRoutes);
 
 
 module.exports = app;
+
+
+

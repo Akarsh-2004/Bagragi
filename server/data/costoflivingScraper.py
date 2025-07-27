@@ -13,26 +13,26 @@ from webdriver_manager.chrome import ChromeDriverManager
 import logging
 from datetime import datetime
 import json
-import requests
-from bs4 import BeautifulSoup
 import re
+from typing import List, Dict, Any, Tuple
+from enum import Enum
+
+class NumbeoXPath(Enum):
+    COST_OF_LIVING_INDEX = "//td[contains(text(), 'Cost of Living Index')]/following-sibling::td"
+    RENT_INDEX = "//td[contains(text(), 'Rent Index')]/following-sibling::td"
+    COST_PLUS_RENT_INDEX = "//td[contains(text(), 'Cost of Living Plus Rent Index')]/following-sibling::td"
+    GROCERIES_INDEX = "//td[contains(text(), 'Groceries Index')]/following-sibling::td"
+    RESTAURANT_PRICE_INDEX = "//td[contains(text(), 'Restaurant Price Index')]/following-sibling::td"
+    LOCAL_PURCHASING_POWER_INDEX = "//td[contains(text(), 'Local Purchasing Power Index')]/following-sibling::td"
 
 class CostOfLivingScraper:
-    def __init__(self, headless=True, delay_range=(2, 5)):
-        """
-        Initialize the Cost of Living scraper
-        
-        Args:
-            headless (bool): Run browser in headless mode
-            delay_range (tuple): Range for random delays between requests
-        """
+    def __init__(self, headless: bool = True, delay_range: Tuple[int, int] = (2, 5)):
         self.setup_logging()
         self.delay_range = delay_range
         self.driver = self.setup_driver(headless)
-        self.cost_data = []
-        
-    def setup_logging(self):
-        """Setup logging configuration"""
+        self.cost_data: List[Dict[str, Any]] = []
+
+    def setup_logging(self) -> None:
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s - %(message)s',
@@ -42,142 +42,88 @@ class CostOfLivingScraper:
             ]
         )
         self.logger = logging.getLogger(__name__)
-        
-    def setup_driver(self, headless=True):
-        """Setup Chrome driver with optimal configurations"""
+
+    def setup_driver(self, headless: bool) -> webdriver.Chrome:
         options = Options()
-        
         if headless:
             options.add_argument('--headless')
-            
-        # Anti-detection measures
+
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
         options.add_argument('--disable-blink-features=AutomationControlled')
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option('useAutomationExtension', False)
-        options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+        options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
         
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-        
         return driver
-        
-    def random_delay(self):
-        """Add random delay to avoid detection"""
+
+    def random_delay(self) -> None:
         delay = random.uniform(*self.delay_range)
         time.sleep(delay)
-        
-    def scrape_numbeo_data(self, countries):
-        """
-        Scrape cost of living data from Numbeo
-        
-        Args:
-            countries (list): List of country names
-            
-        Returns:
-            list: List of cost of living dictionaries
-        """
+
+    def scrape_numbeo_data(self, countries: List[str]) -> List[Dict[str, Any]]:
         self.logger.info("Starting to scrape Numbeo cost of living data")
-        
         base_url = "https://www.numbeo.com/cost-of-living/country_result.jsp?country="
-        
+
         for country in countries:
             try:
                 self.logger.info(f"Scraping cost of living for {country}")
-                
-                # Format country name for URL
                 country_url = country.replace(" ", "+")
                 url = f"{base_url}{country_url}"
                 
                 self.driver.get(url)
                 self.random_delay()
                 
-                # Extract cost of living data
                 country_data = self.extract_numbeo_data(country)
                 if country_data:
                     self.cost_data.append(country_data)
                     self.logger.info(f"Successfully scraped {country}")
                 else:
                     self.logger.warning(f"No data found for {country}")
-                    
             except Exception as e:
-                self.logger.error(f"Error scraping {country}: {str(e)}")
+                self.logger.error(f"Error scraping {country}: {e}")
                 continue
-                
         return self.cost_data
-        
-    def extract_numbeo_data(self, country):
-        """Extract cost of living data from Numbeo page"""
+
+    def extract_numbeo_data(self, country: str) -> Dict[str, Any] | None:
         try:
-            # Wait for the cost of living table to load
             WebDriverWait(self.driver, 10).until(
                 EC.presence_of_element_located((By.CLASS_NAME, "data_wide_table"))
             )
             
-            # Initialize data dictionary
-            data = {
+            data: Dict[str, Any] = {
                 "Country": country,
                 "Scraped_Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "Source": "Numbeo"
             }
             
-            # Extract cost of living index
-            try:
-                cost_index = self.driver.find_element(By.XPATH, "//td[contains(text(), 'Cost of Living Index')]/following-sibling::td").text
-                data["Cost_of_Living_Index"] = self.clean_numeric(cost_index)
-            except:
-                data["Cost_of_Living_Index"] = "N/A"
-                
-            # Extract rent index
-            try:
-                rent_index = self.driver.find_element(By.XPATH, "//td[contains(text(), 'Rent Index')]/following-sibling::td").text
-                data["Rent_Index"] = self.clean_numeric(rent_index)
-            except:
-                data["Rent_Index"] = "N/A"
-                
-            # Extract cost of living plus rent index
-            try:
-                cost_plus_rent = self.driver.find_element(By.XPATH, "//td[contains(text(), 'Cost of Living Plus Rent Index')]/following-sibling::td").text
-                data["Cost_of_Living_Plus_Rent_Index"] = self.clean_numeric(cost_plus_rent)
-            except:
-                data["Cost_of_Living_Plus_Rent_Index"] = "N/A"
-                
-            # Extract groceries index
-            try:
-                groceries = self.driver.find_element(By.XPATH, "//td[contains(text(), 'Groceries Index')]/following-sibling::td").text
-                data["Groceries_Index"] = self.clean_numeric(groceries)
-            except:
-                data["Groceries_Index"] = "N/A"
-                
-            # Extract restaurant price index
-            try:
-                restaurant = self.driver.find_element(By.XPATH, "//td[contains(text(), 'Restaurant Price Index')]/following-sibling::td").text
-                data["Restaurant_Price_Index"] = self.clean_numeric(restaurant)
-            except:
-                data["Restaurant_Price_Index"] = "N/A"
-                
-            # Extract local purchasing power index
-            try:
-                purchasing_power = self.driver.find_element(By.XPATH, "//td[contains(text(), 'Local Purchasing Power Index')]/following-sibling::td").text
-                data["Local_Purchasing_Power_Index"] = self.clean_numeric(purchasing_power)
-            except:
-                data["Local_Purchasing_Power_Index"] = "N/A"
-                
-            # Extract detailed cost items
-            detailed_costs = self.extract_detailed_costs()
-            data.update(detailed_costs)
+            for index_name, xpath_enum in {
+                "Cost_of_Living_Index": NumbeoXPath.COST_OF_LIVING_INDEX,
+                "Rent_Index": NumbeoXPath.RENT_INDEX,
+                "Cost_of_Living_Plus_Rent_Index": NumbeoXPath.COST_PLUS_RENT_INDEX,
+                "Groceries_Index": NumbeoXPath.GROCERIES_INDEX,
+                "Restaurant_Price_Index": NumbeoXPath.RESTAURANT_PRICE_INDEX,
+                "Local_Purchasing_Power_Index": NumbeoXPath.LOCAL_PURCHASING_POWER_INDEX,
+            }.items():
+                try:
+                    element = self.driver.find_element(By.XPATH, xpath_enum.value)
+                    data[index_name] = self.clean_numeric(element.text)
+                except NoSuchElementException:
+                    data[index_name] = "N/A"
             
+            data.update(self.extract_detailed_costs())
             return data
-            
-        except Exception as e:
-            self.logger.error(f"Error extracting data for {country}: {str(e)}")
+        except TimeoutException:
+            self.logger.error(f"Timeout waiting for data table for {country}")
             return None
-            
-    def extract_detailed_costs(self):
-        """Extract detailed cost items from the page"""
-        detailed_costs = {}
-        
+        except Exception as e:
+            self.logger.error(f"Error extracting data for {country}: {e}")
+            return None
+
+    def extract_detailed_costs(self) -> Dict[str, Any]:
+        detailed_costs: Dict[str, Any] = {}
         cost_items = {
             "Meal_Inexpensive_Restaurant_USD": "Meal, Inexpensive Restaurant",
             "Meal_for_2_Mid_Range_Restaurant_USD": "Meal for 2 People, Mid-range Restaurant",
@@ -229,128 +175,93 @@ class CostOfLivingScraper:
         
         for key, search_text in cost_items.items():
             try:
-                # Find the cost item in the table
                 cost_element = self.driver.find_element(By.XPATH, f"//td[contains(text(), '{search_text}')]/following-sibling::td")
-                cost_value = cost_element.text
-                detailed_costs[key] = self.clean_numeric(cost_value)
-            except:
+                detailed_costs[key] = self.clean_numeric(cost_element.text)
+            except NoSuchElementException:
                 detailed_costs[key] = "N/A"
-                
         return detailed_costs
-        
-    def clean_numeric(self, value):
-        """Clean and extract numeric values from text"""
-        if not value or value == "N/A":
+
+    def clean_numeric(self, value: str) -> float | str:
+        if not value or value.strip().upper() == "N/A":
             return "N/A"
-            
-        # Remove currency symbols and extract numbers
+        
         numeric_value = re.sub(r'[^\d.,]', '', value)
         numeric_value = numeric_value.replace(',', '')
         
         try:
             return float(numeric_value)
-        except:
+        except ValueError:
             return "N/A"
-            
-    def scrape_alternative_sources(self, countries):
-        """
-        Scrape additional cost of living data from alternative sources
-        
-        Args:
-            countries (list): List of country names
-        """
+
+    def scrape_alternative_sources(self, countries: List[str]) -> None:
         self.logger.info("Scraping alternative cost of living sources")
-        
-        # Add World Bank data, IMF data, etc.
         for country in countries:
             try:
-                # Example: Add GDP per capita, inflation rate, etc.
                 additional_data = self.get_economic_indicators(country)
-                
-                # Find existing country data and update
                 for i, data in enumerate(self.cost_data):
                     if data["Country"] == country:
                         self.cost_data[i].update(additional_data)
                         break
-                        
             except Exception as e:
-                self.logger.error(f"Error getting additional data for {country}: {str(e)}")
+                self.logger.error(f"Error getting additional data for {country}: {e}")
                 continue
-                
-    def get_economic_indicators(self, country):
-        """
-        Get additional economic indicators for a country
-        
-        Args:
-            country (str): Country name
-            
-        Returns:
-            dict: Economic indicators
-        """
-        # This is a placeholder - you can integrate with World Bank API, IMF API, etc.
-        indicators = {
+
+    def get_economic_indicators(self, country: str) -> Dict[str, Any]:
+        return {
             "GDP_Per_Capita_USD": "N/A",
             "Inflation_Rate_Percent": "N/A",
             "Unemployment_Rate_Percent": "N/A",
             "Average_Monthly_Salary_USD": "N/A",
             "Minimum_Wage_USD": "N/A"
         }
-        
-        # Example: You can add actual API calls here
-        # world_bank_data = self.get_world_bank_data(country)
-        # indicators.update(world_bank_data)
-        
-        return indicators
-        
-    def save_data(self, filename="cost_of_living_dataset.csv", save_json=True):
-        """Save scraped data to CSV and optionally JSON"""
+
+    def save_data(self, filename: str = "cost_of_living_dataset.csv", save_json: bool = True) -> None:
         if not self.cost_data:
             self.logger.warning("No data to save")
             return
             
-        # Save to CSV
         df = pd.DataFrame(self.cost_data)
         df.to_csv(filename, index=False)
         self.logger.info(f"Data saved to {filename}")
         
-        # Save to JSON as backup
         if save_json:
             json_filename = filename.replace('.csv', '.json')
             with open(json_filename, 'w', encoding='utf-8') as f:
                 json.dump(self.cost_data, f, indent=2, ensure_ascii=False)
             self.logger.info(f"Data also saved to {json_filename}")
             
-        # Print summary
         self.print_summary(df)
-        
-    def print_summary(self, df):
-        """Print summary of scraped data"""
+
+    def print_summary(self, df: pd.DataFrame) -> None:
         self.logger.info("\n" + "="*50)
         self.logger.info("COST OF LIVING SCRAPING SUMMARY")
         self.logger.info("="*50)
         self.logger.info(f"Total countries scraped: {len(df)}")
         self.logger.info(f"Data points per country: {len(df.columns)}")
         
-        # Show average cost of living index
         if "Cost_of_Living_Index" in df.columns:
             avg_col = df["Cost_of_Living_Index"].replace("N/A", np.nan).astype(float).mean()
             self.logger.info(f"Average Cost of Living Index: {avg_col:.2f}")
             
-        # Show top 5 most expensive countries
         if "Cost_of_Living_Index" in df.columns:
-            top_expensive = df.nlargest(5, "Cost_of_Living_Index")["Country"].tolist()
-            self.logger.info(f"Top 5 most expensive countries: {', '.join(top_expensive)}")
+            # Ensure "Cost_of_Living_Index" is numeric for sorting
+            df_numeric_col = df[df["Cost_of_Living_Index"] != "N/A"].copy()
+            df_numeric_col["Cost_of_Living_Index"] = pd.to_numeric(df_numeric_col["Cost_of_Living_Index"])
             
+            if not df_numeric_col.empty:
+                top_expensive = df_numeric_col.nlargest(5, "Cost_of_Living_Index")["Country"].tolist()
+                self.logger.info(f"Top 5 most expensive countries: {', '.join(top_expensive)}")
+            else:
+                self.logger.info("Not enough numeric Cost of Living Index data to determine top 5.")
+                
         self.logger.info("="*50)
-        
-    def close(self):
-        """Close the driver"""
+
+    def close(self) -> None:
         if self.driver:
             self.driver.quit()
             self.logger.info("Driver closed")
 
-# List of countries to scrape
-COUNTRIES_LIST = [
+COUNTRIES_LIST: List[str] = [
     "United States", "Canada", "Mexico", "Brazil", "Argentina", "Chile", "Colombia", "Peru",
     "United Kingdom", "Germany", "France", "Italy", "Spain", "Netherlands", "Switzerland", "Austria",
     "Belgium", "Portugal", "Greece", "Czech Republic", "Poland", "Hungary", "Romania", "Croatia",
@@ -367,20 +278,11 @@ COUNTRIES_LIST = [
     "Montenegro", "North Macedonia", "Bosnia and Herzegovina", "Mongolia", "Uzbekistan", "Kazakhstan"
 ]
 
-def main():
-    """Main function to run the cost of living scraper"""
-    
-    # Initialize scraper
+def main() -> None:
     scraper = CostOfLivingScraper(headless=False, delay_range=(3, 6))
-    
     try:
-        # Scrape cost of living data
-        cost_data = scraper.scrape_numbeo_data(COUNTRIES_LIST)
-        
-        # Add additional economic indicators
+        scraper.scrape_numbeo_data(COUNTRIES_LIST)
         scraper.scrape_alternative_sources(COUNTRIES_LIST)
-        
-        # Save data
         scraper.save_data("cost_of_living_dataset.csv")
         
         print("\n✅ Cost of Living data scraping completed successfully!")
@@ -390,7 +292,7 @@ def main():
         print("   - cost_of_living_scraper.log")
         
     except Exception as e:
-        logging.error(f"Main execution error: {str(e)}")
+        logging.error(f"Main execution error: {e}")
     finally:
         scraper.close()
 

@@ -1,5 +1,6 @@
 import React, { Suspense, useState, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
+import { useNavigate } from 'react-router-dom';
 import { OrbitControls, useGLTF } from '@react-three/drei';
 import LoginModal from '../components/LoginModal';
 import AuthForm from '../components/Authform';
@@ -28,6 +29,7 @@ const locations = {
 };
 
 function Home() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [showLogin, setShowLogin] = useState(false);
   const [location, setLocation] = useState('');
@@ -108,9 +110,37 @@ function Home() {
 {/* Horizontal Button Row After Slideshow */}
 <div className="flex flex-wrap justify-center gap-4 mt-10">
   <button className="border border-black px-5 py-3 rounded-full bg-blue-200 hover:bg-blue-400 transition-all duration-200 font-semibold">Plan a Trip</button>
-  <button className="border border-black px-5 py-3 rounded-full bg-blue-200 hover:bg-blue-400 transition-all duration-200 font-semibold">Book Hotel</button>
-  <button className="border border-black px-5 py-3 rounded-full bg-blue-200 hover:bg-blue-400 transition-all duration-200 font-semibold">See Images</button>
-  <button className="border border-black px-5 py-3 rounded-full bg-green-200 hover:bg-green-400 transition-all duration-200 font-semibold">History</button>
+  <button
+    className="border border-black px-5 py-3 rounded-full bg-blue-200 hover:bg-blue-400 transition-all duration-200 font-semibold"
+    onClick={() => navigate('/hotel')}
+  >
+    Book Hotel
+  </button>
+  <button
+  className="border border-black px-5 py-3 rounded-full bg-blue-200 hover:bg-blue-400 transition-all duration-200 font-semibold"
+  onClick={() => {
+    if (imageLocation) {
+      navigate(`/images/${imageLocation.toLowerCase()}`);
+    } else {
+      alert('Please select a location first.');
+    }
+  }}
+>
+  See Images
+</button>
+
+  <button
+  className="border border-black px-5 py-3 rounded-full bg-green-200 hover:bg-green-400 transition-all duration-200 font-semibold"
+  onClick={() => {
+    if (imageLocation) {
+      navigate(`/history/${imageLocation.toLowerCase()}`);
+    } else {
+      alert('Please select a location first.');
+    }
+  }}
+>
+  History
+</button>
   <button className="border border-black px-5 py-3 rounded-full bg-green-200 hover:bg-green-400 transition-all duration-200 font-semibold">FAQs</button>
 </div>
 

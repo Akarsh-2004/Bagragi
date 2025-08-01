@@ -68,12 +68,12 @@ function SearchBar({ onLocationSelect }) {
         placeholder="Enter the place you wish to tour.."
         value={query}
         onChange={handleInputChange}
-        className="block mx-auto px-5 py-3 w-[350px] border-4 border-black rounded-full bg-white"
+        className="block mx-auto px-5 py-3 w-[350px] border-2 border-black rounded-full bg-white"
       />
 
       {/* Suggestions */}
       {suggestions.length > 0 && (
-        <ul className="w-[350px] mx-auto mt-2 bg-white text-black border-2 border-black rounded-md shadow-md z-10 relative">
+        <ul className="w-[350px] mx-auto mt-2 bg-white text-black border border-black rounded-md shadow-md z-10 relative">
           {suggestions.map((country) => (
             <li
               key={country.name}

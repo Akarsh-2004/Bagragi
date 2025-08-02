@@ -6,6 +6,8 @@ const hotelRoutes=require('./routes/hotel.routes');
 const infoRoutes= require('./routes/info.routes');
 const inflationRoutes = require('./routes/inflation.routes');
 const costRoutes = require('./routes/cost.route');
+const tripRoutes = require('./routes/trip.routes');
+const chatbotRoutes = require('./routes/chatbot.routes');
 
 const app = express();
 app.use(cors({
@@ -21,9 +23,8 @@ app.use('/api/hotels', hotelRoutes);
 app.use('/api/info', infoRoutes);
 app.use('/api/info', inflationRoutes);
 app.use('/api/cost', costRoutes);
+app.use('/api/trip', tripRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 
 
 module.exports = app;
-
-
-

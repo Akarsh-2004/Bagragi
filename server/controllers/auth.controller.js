@@ -8,7 +8,18 @@ const JWT_SECRET = process.env.JWT_SECRET || 'default_secret';
 
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role, country, city } = req.body;
+    const { 
+      name, 
+      email, 
+      password, 
+      role, 
+      country, 
+      city, 
+      phone, 
+      bio, 
+      profileImage,
+      preferences 
+    } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser)
@@ -23,6 +34,14 @@ exports.register = async (req, res) => {
       role,
       country,
       city,
+      phone,
+      bio,
+      profileImage,
+      preferences: preferences || {
+        travelStyle: '',
+        budget: '',
+        preferredCountries: []
+      }
     });
 
     await user.save();
@@ -61,7 +80,14 @@ exports.login = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        country: user.country,
+        city: user.city,
+        phone: user.phone,
+        bio: user.bio,
+        profileImage: user.profileImage,
+        preferences: user.preferences,
+        createdAt: user.createdAt
       }
     });
   } catch (err) {

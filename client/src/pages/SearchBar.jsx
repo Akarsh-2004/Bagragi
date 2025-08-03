@@ -1,40 +1,39 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
-import { Search, XCircle, Loader2, Globe, MapPin } from 'lucide-react'; // Added MapPin icon for cities
-
-// Mock cities data - in a real app, this would likely be fetched dynamically
-const mockCities = {
-  India: ['Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Ahmedabad'],
-  France: ['Paris', 'Lyon', 'Marseille', 'Nice', 'Bordeaux', 'Toulouse'],
-  Japan: ['Tokyo', 'Osaka', 'Kyoto', 'Sapporo', 'Fukuoka'],
-  Brazil: ['Rio de Janeiro', 'São Paulo', 'Brasília', 'Salvador', 'Fortaleza'],
-  'United States': ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix'],
-  Canada: ['Toronto', 'Vancouver', 'Montreal', 'Calgary'],
-  Australia: ['Sydney', 'Melbourne', 'Brisbane', 'Perth'],
-  Germany: ['Berlin', 'Munich', 'Hamburg', 'Frankfurt'],
-  Italy: ['Rome', 'Milan', 'Florence', 'Venice'],
-  Spain: ['Madrid', 'Barcelona', 'Valencia', 'Seville'],
-};
+import { Search, XCircle, Loader2, Globe, MapPin, Plus } from 'lucide-react';
 
 function SearchBar({ onLocationSelect }) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [allCountries, setAllCountries] = useState([]);
-  const [allSearchableLocations, setAllSearchableLocations] = useState([]); // New state for combined search data
   const [isLoadingCountries, setIsLoadingCountries] = useState(true);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [countryFetchError, setCountryFetchError] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [customLocationMode, setCustomLocationMode] = useState(false);
 
   const inputRef = useRef(null);
   const suggestionsRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
 
-  // Effect to fetch all countries once on component mount and build combined search data
+  // Sample popular cities for quick suggestions
+  const popularCities = [
+    'Paris', 'London', 'New York', 'Tokyo', 'Rome', 'Barcelona', 'Amsterdam', 'Dubai',
+    'Istanbul', 'Bangkok', 'Sydney', 'Los Angeles', 'Berlin', 'Vienna', 'Prague',
+    'Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Pune', 'Jaipur', 'Goa',
+    'Shanghai', 'Beijing', 'Hong Kong', 'Singapore', 'Seoul', 'Osaka', 'Kyoto',
+    'Cairo', 'Cape Town', 'Marrakech', 'Casablanca', 'Lagos', 'Nairobi', 'Johannesburg',
+    'São Paulo', 'Rio de Janeiro', 'Buenos Aires', 'Lima', 'Bogotá', 'Santiago',
+    'Toronto', 'Vancouver', 'Montreal', 'Mexico City', 'Cancún', 'Guadalajara',
+    'Moscow', 'St. Petersburg', 'Warsaw', 'Budapest', 'Athens', 'Lisbon', 'Madrid',
+    'Stockholm', 'Oslo', 'Copenhagen', 'Helsinki', 'Zurich', 'Geneva', 'Brussels'
+  ];
+
+  // Effect to fetch all countries once on component mount
   useEffect(() => {
-    const fetchAndCombineLocations = async () => {
+    const fetchCountries = async () => {
       setIsLoadingCountries(true);
       setCountryFetchError('');
       try {
@@ -46,48 +45,23 @@ function SearchBar({ onLocationSelect }) {
           capital: country.capital?.[0] || 'N/A',
         })).sort((a, b) => a.name.localeCompare(b.name));
         setAllCountries(fetchedCountries);
-
-        // Build the combined list of searchable locations (countries and cities)
-        const combined = [...fetchedCountries.map(c => ({
-          type: 'country',
-          name: c.name,
-          capital: c.capital,
-          display: c.name,
-          imageRef: c.name // Image reference is the country name
-        }))];
-
-        Object.entries(mockCities).forEach(([countryName, cities]) => {
-          cities.forEach(city => {
-            combined.push({
-              type: 'city',
-              name: city,
-              country: countryName, // Link back to parent country
-              display: city,
-              imageRef: countryName // Image reference is the parent country name
-            });
-          });
-        });
-
-        // Sort the combined list for consistent suggestions
-        combined.sort((a, b) => a.display.localeCompare(b.display));
-        setAllSearchableLocations(combined);
-
       } catch (err) {
         console.error('Error fetching countries:', err);
-        setCountryFetchError('Failed to load countries. Please try again later.');
+        setCountryFetchError('Failed to load countries. You can still search for any location.');
       } finally {
         setIsLoadingCountries(false);
       }
     };
-    fetchAndCombineLocations();
-  }, []); // Empty dependency array means this runs once on mount
+    fetchCountries();
+  }, []);
 
-  // Debounced input change handler
+  // Dynamic search that combines countries, capitals, and popular cities
   const handleInputChange = useCallback((e) => {
     const input = e.target.value;
     setQuery(input);
-    setSelectedCountry(null); // Clear selected country when typing
-    setFocusedIndex(-1); // Reset focus when typing
+    setSelectedCountry(null);
+    setFocusedIndex(-1);
+    setCustomLocationMode(false);
 
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
@@ -102,63 +76,119 @@ function SearchBar({ onLocationSelect }) {
 
     setIsLoadingSuggestions(true);
     debounceTimeoutRef.current = setTimeout(() => {
-      const filtered = allSearchableLocations.filter((loc) =>
-        loc.display.toLowerCase().includes(input.toLowerCase()) // Use .includes for broader search
-      );
-      console.log('Search query:', input, 'Filtered results:', filtered.length);
-      setSuggestions(filtered);
+      const searchTerm = input.toLowerCase();
+      const filtered = [];
+
+      // Add matching countries
+      allCountries.forEach(country => {
+        if (country.name.toLowerCase().includes(searchTerm)) {
+          filtered.push({
+            type: 'country',
+            name: country.name,
+            display: country.name,
+            imageRef: country.name,
+            capital: country.capital
+          });
+        }
+        // Add matching capitals
+        if (country.capital !== 'N/A' && country.capital.toLowerCase().includes(searchTerm)) {
+          filtered.push({
+            type: 'capital',
+            name: country.capital,
+            display: country.capital,
+            imageRef: country.name, // Use country name for images
+            country: country.name
+          });
+        }
+      });
+
+      // Add matching popular cities
+      popularCities.forEach(city => {
+        if (city.toLowerCase().includes(searchTerm)) {
+          filtered.push({
+            type: 'city',
+            name: city,
+            display: city,
+            imageRef: city, // Use city name for images
+            category: 'Popular City'
+          });
+        }
+      });
+
+      // Remove duplicates and sort
+      const uniqueFiltered = filtered.filter((item, index, self) => 
+        index === self.findIndex(t => t.name === item.name && t.type === item.type)
+      ).sort((a, b) => {
+        // Prioritize exact matches
+        const aExact = a.name.toLowerCase() === searchTerm;
+        const bExact = b.name.toLowerCase() === searchTerm;
+        if (aExact && !bExact) return -1;
+        if (!aExact && bExact) return 1;
+        
+        // Then prioritize starts with
+        const aStarts = a.name.toLowerCase().startsWith(searchTerm);
+        const bStarts = b.name.toLowerCase().startsWith(searchTerm);
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+        
+        return a.name.localeCompare(b.name);
+      });
+
+      // Limit to 15 suggestions for performance
+      setSuggestions(uniqueFiltered.slice(0, 15));
       setShowSuggestions(true);
       setIsLoadingSuggestions(false);
-    }, 300); // 300ms debounce delay
-  }, [allSearchableLocations]); // Depends on allSearchableLocations
+    }, 300);
+  }, [allCountries, popularCities]);
 
   const handleSelectLocation = (selectedItem) => {
     console.log('Selected location:', selectedItem);
     setQuery(selectedItem.display);
     setSuggestions([]);
     setShowSuggestions(false);
-    inputRef.current.focus(); // Keep focus on input after selection
+    setCustomLocationMode(false);
+    inputRef.current.focus();
 
-    let countryObjectForDisplay = null;
+    // For countries, show additional options
     if (selectedItem.type === 'country') {
-      countryObjectForDisplay = selectedItem;
-    } else if (selectedItem.type === 'city') {
-      // Find the full country object from allCountries based on the city's country property
-      countryObjectForDisplay = allCountries.find(c => c.name === selectedItem.country);
+      const countryObj = allCountries.find(c => c.name === selectedItem.name);
+      if (countryObj) {
+        setSelectedCountry({
+          ...countryObj,
+          cities: [] // No predefined cities, but we can still search
+        });
+      }
+    } else {
+      setSelectedCountry(null);
     }
 
-    if (countryObjectForDisplay) {
-      setSelectedCountry({
-        ...countryObjectForDisplay,
-        // Ensure cities array is from mockCities for the selected country
-        cities: mockCities[countryObjectForDisplay.name] || [],
-      });
-      console.log('Calling onLocationSelect with:', {
-        displayLocation: selectedItem.display,
-        imageLocation: selectedItem.imageRef
-      });
-      onLocationSelect({
-        displayLocation: selectedItem.display, // This is the actual text to display (country or city)
-        imageLocation: selectedItem.imageRef, // This is always the country name for the slideshow
-      });
-    } else {
-      console.error("Could not find country details for selected item:", selectedItem);
-      setSelectedCountry(null);
-      onLocationSelect({ displayLocation: selectedItem.display, imageLocation: '' });
+    onLocationSelect({
+      displayLocation: selectedItem.display,
+      imageLocation: selectedItem.imageRef
+    });
+  };
+
+  const handleCustomSearch = () => {
+    if (query.trim()) {
+      console.log('Custom search for:', query.trim());
+      const customLocation = {
+        type: 'custom',
+        name: query.trim(),
+        display: query.trim(),
+        imageRef: query.trim()
+      };
+      handleSelectLocation(customLocation);
     }
   };
 
-  const handleLocationClick = (locationName, countryName) => {
+  const handleLocationClick = (locationName) => {
     setQuery(locationName);
-    
-    // Create a location object similar to what handleSelectLocation expects
     const locationObj = {
       display: locationName,
-      imageRef: countryName, // Use country name for image reference
-      type: locationName === countryName ? 'country' : 'city',
-      country: countryName
+      imageRef: locationName,
+      type: 'custom',
+      name: locationName
     };
-    
     handleSelectLocation(locationObj);
   };
 
@@ -168,7 +198,8 @@ function SearchBar({ onLocationSelect }) {
     setSelectedCountry(null);
     setShowSuggestions(false);
     setFocusedIndex(-1);
-    onLocationSelect({ displayLocation: '', imageLocation: '' }); // Clear selected location in Home
+    setCustomLocationMode(false);
+    onLocationSelect({ displayLocation: '', imageLocation: '' });
     inputRef.current.focus();
   };
 
@@ -185,26 +216,15 @@ function SearchBar({ onLocationSelect }) {
         if (focusedIndex !== -1 && suggestions[focusedIndex]) {
           handleSelectLocation(suggestions[focusedIndex]);
         } else if (query.trim() !== '') {
-          // If Enter is pressed and no suggestion is focused, try to match current query
-          const exactMatch = allSearchableLocations.find(loc =>
-            loc.display.toLowerCase() === query.toLowerCase()
-          );
-          if (exactMatch) {
-            handleSelectLocation(exactMatch);
-          }
+          handleCustomSearch();
         }
       } else if (e.key === 'Escape') {
         setShowSuggestions(false);
-        inputRef.current.blur(); // Remove focus from input
+        inputRef.current.blur();
       }
     } else if (e.key === 'Enter' && query.trim() !== '') {
-        // Allow pressing Enter on the input field directly to select an exact match
-        const exactMatch = allSearchableLocations.find(loc =>
-            loc.display.toLowerCase() === query.toLowerCase()
-        );
-        if (exactMatch) {
-            handleSelectLocation(exactMatch);
-        }
+      e.preventDefault();
+      handleCustomSearch();
     }
   };
 
@@ -224,7 +244,6 @@ function SearchBar({ onLocationSelect }) {
     };
   }, []);
 
-
   return (
     <div className="relative w-full">
       <div className="flex items-center bg-white rounded-full p-2 shadow-md border border-gray-200">
@@ -234,12 +253,14 @@ function SearchBar({ onLocationSelect }) {
         <input
           ref={inputRef}
           type="text"
-          placeholder={isLoadingCountries ? "Loading destinations..." : "Search for a country or city..."}
+          placeholder={isLoadingCountries ? "Loading destinations..." : "Search for any city, country, or destination..."}
           value={query}
           onChange={handleInputChange}
-          onFocus={() => query.length > 0 && setSuggestions(
-            allSearchableLocations.filter((loc) => loc.display.toLowerCase().includes(query.toLowerCase()))
-          ) && setShowSuggestions(true)} // Show suggestions on focus if query exists
+          onFocus={() => {
+            if (query.length > 0) {
+              handleInputChange({ target: { value: query } });
+            }
+          }}
           onKeyDown={handleKeyDown}
           className="flex-grow p-2 outline-none text-gray-800 text-lg bg-transparent placeholder-gray-400"
           disabled={isLoadingCountries}
@@ -256,10 +277,20 @@ function SearchBar({ onLocationSelect }) {
             <XCircle size={20} className="text-gray-500" />
           </button>
         )}
+        {query.trim() && !showSuggestions && (
+          <button
+            onClick={handleCustomSearch}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors ml-2 bg-blue-50"
+            aria-label="Search for this location"
+            title="Search for this location"
+          >
+            <Plus size={20} className="text-blue-600" />
+          </button>
+        )}
       </div>
 
       {countryFetchError && (
-        <p className="text-red-500 text-sm mt-2 text-center">{countryFetchError}</p>
+        <p className="text-orange-500 text-sm mt-2 text-center">{countryFetchError}</p>
       )}
 
       {showSuggestions && (query.trim() !== '' || isLoadingSuggestions) && (
@@ -275,11 +306,20 @@ function SearchBar({ onLocationSelect }) {
             </li>
           )}
           {!isLoadingSuggestions && suggestions.length === 0 && query.trim() !== '' && (
-            <li className="p-4 text-center text-gray-500">No matching destinations found.</li>
+            <li className="p-4 text-center text-gray-500">
+              <div>No matching destinations found.</div>
+              <button
+                onClick={handleCustomSearch}
+                className="mt-2 flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors mx-auto"
+              >
+                <Plus size={16} />
+                Search for "{query}" anyway
+              </button>
+            </li>
           )}
           {!isLoadingSuggestions && suggestions.length > 0 && suggestions.map((loc, index) => (
             <li
-              key={`${loc.type}-${loc.name}`} // Unique key for combined list
+              key={`${loc.type}-${loc.name}`}
               id={`suggestion-${index}`}
               role="option"
               aria-selected={focusedIndex === index}
@@ -290,58 +330,60 @@ function SearchBar({ onLocationSelect }) {
             >
               {loc.type === 'country' ? (
                 <Globe size={18} className="text-blue-500 mr-2" />
+              ) : loc.type === 'capital' ? (
+                <MapPin size={18} className="text-purple-500 mr-2" />
               ) : (
                 <MapPin size={18} className="text-green-500 mr-2" />
               )}
-              <span className="text-gray-800 font-medium">{loc.display}</span>
-              {loc.type === 'city' && (
-                <span className="text-gray-500 text-sm ml-2">({loc.country})</span>
-              )}
-              {loc.type === 'country' && loc.capital !== 'N/A' && (
-                <span className="text-gray-500 text-sm ml-2">({loc.capital})</span>
-              )}
+              <div className="flex-grow">
+                <span className="text-gray-800 font-medium">{loc.display}</span>
+                {loc.type === 'capital' && (
+                  <span className="text-gray-500 text-sm ml-2">(Capital of {loc.country})</span>
+                )}
+                {loc.type === 'country' && loc.capital !== 'N/A' && (
+                  <span className="text-gray-500 text-sm ml-2">(Capital: {loc.capital})</span>
+                )}
+                {loc.type === 'city' && loc.category && (
+                  <span className="text-gray-500 text-sm ml-2">({loc.category})</span>
+                )}
+              </div>
             </li>
           ))}
+          {!isLoadingSuggestions && suggestions.length > 0 && query.trim() && (
+            <li className="border-t border-gray-100">
+              <button
+                onClick={handleCustomSearch}
+                className="w-full flex items-center gap-2 p-3 text-blue-600 hover:bg-blue-50 transition-colors"
+              >
+                <Plus size={18} />
+                <span>Search for "{query}" exactly</span>
+              </button>
+            </li>
+          )}
         </ul>
       )}
 
       {selectedCountry && (
         <div className="w-full mx-auto mt-4 p-4 bg-white/10 backdrop-blur-md rounded-xl shadow-lg border border-white/20 text-white">
           <h3 className="text-xl font-semibold mb-3 text-center">Explore {selectedCountry.name}</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
             <button
               className="flex-1 bg-blue-500/20 border border-blue-400/30 text-white p-3 rounded-lg font-bold hover:bg-blue-500/30 transition-all duration-200"
-              onClick={() => handleLocationClick(selectedCountry.name, selectedCountry.name)}
+              onClick={() => handleLocationClick(selectedCountry.name)}
             >
               {selectedCountry.name}
             </button>
             {selectedCountry.capital !== 'N/A' && (
               <button
                 className="flex-1 bg-purple-500/20 border border-purple-400/30 text-white p-3 rounded-lg font-bold hover:bg-purple-500/30 transition-all duration-200"
-                onClick={() => handleLocationClick(selectedCountry.capital, selectedCountry.name)}
+                onClick={() => handleLocationClick(selectedCountry.capital)}
               >
                 {selectedCountry.capital}
               </button>
             )}
-            {selectedCountry.cities && selectedCountry.cities.length > 0 && (
-              <select
-                className="flex-1 bg-green-500/20 border border-green-400/30 text-white p-3 rounded-lg font-bold hover:bg-green-500/30 transition-all duration-200 appearance-none cursor-pointer"
-                onChange={(e) => handleLocationClick(e.target.value, selectedCountry.name)}
-                defaultValue=""
-              >
-                <option value="" disabled className="text-gray-700 bg-white">
-                  Select a City
-                </option>
-                {selectedCountry.cities.map((city) => (
-                  <option key={city} value={city} className="text-gray-800 bg-white">
-                    {city}
-                  </option>
-                ))}
-              </select>
-            )}
           </div>
 
-          {/* Map View - now uses the current query for the map */}
+          {/* Map View */}
           {query && (
             <div className="w-full h-[300px] border-2 border-white/30 rounded-xl overflow-hidden shadow-inner">
               <iframe
@@ -351,7 +393,7 @@ function SearchBar({ onLocationSelect }) {
                 style={{ border: 0 }}
                 src={`https://www.google.com/maps?q=${encodeURIComponent(query)}&output=embed`}
                 allowFullScreen
-                loading="lazy" // Improves performance by deferring loading
+                loading="lazy"
               />
             </div>
           )}

@@ -3,17 +3,16 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, useGLTF } from '@react-three/drei';
 import { MapPin, Calendar, Hotel, Camera, BookOpen, HelpCircle, User, LogIn, LogOut, Settings, UserCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import LoginModal from '../components/LoginModal';
-import AuthForm from '../components/AuthForm';
-import SearchBar from '../pages/SearchBar';
-import Chatbot from '../components/Chatbot';
+import LoginModal from '../components/LoginModal.jsx';
+import AuthForm from '../components/AuthForm.jsx';
+import SearchBar from '../pages/SearchBar.jsx';
+import Chatbot from '../components/Chatbot.jsx';
+import CityImages from './CityImages.jsx';
 
 function Earth() {
   const { scene } = useGLTF('/earth3d.glb');
   return <primitive object={scene} scale={1.5} />;
 }
-
-const PEXELS_API_KEY = 'YOUR_PEXELS_API_KEY';
 
 function Home({ user, setUser }) {
   const [showLogin, setShowLogin] = useState(false);
@@ -45,23 +44,53 @@ function Home({ user, setUser }) {
 
   useEffect(() => {
     const fetchImages = async () => {
-      if (!imageLocation) return;
+      if (!imageLocation) {
+        setSlider([]);
+        return;
+      }
+
       try {
+        console.log('Fetching images for:', imageLocation); // Debug log
         const res = await fetch(`http://localhost:5000/api/pexels/images?query=${encodeURIComponent(imageLocation)}`);
+        
+        if (!res.ok) {
+          throw new Error(`HTTP error! Status: ${res.status}`);
+        }
+
         const data = await res.json();
-        const images = data.images.map(img => ({
-          img: img.url,
-          desc: img.description || `Image of ${imageLocation}`
+        console.log('API Response:', data); // Debug log
+        
+        const images = data?.images || [];
+
+        if (!Array.isArray(images) || images.length === 0) {
+          console.warn('No valid images received for:', imageLocation);
+          setSlider([]);
+          return;
+        }
+
+        const processedImages = images.map((img) => ({
+          img: img?.url || '',
+          desc: img?.description || `Image of ${imageLocation}`
         }));
-        setSlider(images);
+
+        console.log('Processed images:', processedImages.length); // Debug log
+        setSlider(processedImages);
         setCurrentSlide(0);
       } catch (error) {
         console.error('Error fetching images from backend:', error);
         setSlider([]);
       }
     };
+
     fetchImages();
-  }, [imageLocation]);  
+  }, [imageLocation]);
+
+  // Handle location selection from SearchBar
+  const handleLocationSelect = ({ displayLocation, imageLocation: imgLoc }) => {
+    console.log('Location selected:', { displayLocation, imageLocation: imgLoc }); // Debug log
+    setLocation(displayLocation);
+    setImageLocation(imgLoc || displayLocation); // Use imageLocation if provided, fallback to displayLocation
+  };
 
   const actionButtons = [
     {
@@ -80,8 +109,9 @@ function Home({ user, setUser }) {
       label: "See Images",
       icon: Camera,
       onClick: () => {
-        if (imageLocation) {
-          navigate(`/images/${imageLocation.toLowerCase()}`);
+        if (location) {
+          // Use the actual location name for the URL, not imageLocation
+          navigate(`/images/${encodeURIComponent(location.toLowerCase())}`);
         } else {
           console.warn('Please select a location first to see images.');
         }
@@ -92,8 +122,9 @@ function Home({ user, setUser }) {
       label: "History",
       icon: BookOpen,
       onClick: () => {
-        if (imageLocation) {
-          navigate(`/history/${imageLocation.toLowerCase()}`);
+        if (location) {
+          // Use the actual location name, not imageLocation
+          navigate(`/history/${encodeURIComponent(location.toLowerCase())}`);
         } else {
           console.warn('Please select a location first to see history.');
         }
@@ -232,10 +263,7 @@ function Home({ user, setUser }) {
         </div>
 
         <div className="w-full max-w-4xl mb-16">
-          <SearchBar onLocationSelect={({ displayLocation, imageLocation }) => {
-            setLocation(displayLocation);
-            setImageLocation(imageLocation);
-          }} />
+          <SearchBar onLocationSelect={handleLocationSelect} />
         </div>
 
         {location && (

@@ -51,7 +51,8 @@ function Home({ user, setUser }) {
 
       try {
         console.log('Fetching images for:', imageLocation); // Debug log
-        const res = await fetch(`http://localhost:5000/api/pexels/images?query=${encodeURIComponent(imageLocation)}`);
+        const res = await fetch(`${process.env.REACT_APP_NODE_API}/api/pexels/images?query=${encodeURIComponent(imageLocation)}`);
+
         
         if (!res.ok) {
           throw new Error(`HTTP error! Status: ${res.status}`);

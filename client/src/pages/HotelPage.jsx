@@ -61,7 +61,7 @@ const HotelPage = ({ user = { role: "guest" } }) => {
     setDebugInfo(`Making request to: http://localhost:8000/api/hotel_info with body: ${JSON.stringify(requestBody)}`);
     
     try {
-      const response = await fetch("http://localhost:8000/api/hotel_info", {
+      const response = await fetch(`${process.env.REACT_APP_NODE_API}/api/hotel_info`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

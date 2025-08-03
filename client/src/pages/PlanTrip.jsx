@@ -63,20 +63,41 @@ const PlanTrip = () => {
     }));
   };
 
+  // Corrected fetchSuggestions function
   const fetchSuggestions = async (destination) => {
-    if (!destination) return;
+    if (!destination) {
+      setSuggestions(null); // Clear suggestions if destination is empty
+      return;
+    }
     
     try {
-      const response = await axios.get(`http://localhost:5000/api/trip/suggestions/${destination}`);
-      setSuggestions(response.data.suggestions);
+      // Use the environment variable for the Python API base URL
+      const baseUrl = process.env.REACT_APP_PYTHON_API || "http://localhost:5000";
+      const response = await axios.get(`${baseUrl}/api/trip/suggestions/${encodeURIComponent(destination)}`);
+      
+      // The Python backend is designed to return an object, not an array for suggestions
+      if (response.data && response.data.suggestions && typeof response.data.suggestions === 'object') {
+        setSuggestions(response.data.suggestions);
+      } else {
+        console.warn("Unexpected response structure for suggestions:", response.data);
+        setSuggestions(null); // Clear suggestions if structure is unexpected
+      }
+
     } catch (error) {
-      console.error('Error fetching suggestions:', error);
+      console.error("Error fetching suggestions:", error.message || error);
+      setSuggestions(null); // Clear suggestions on error
     }
   };
 
   useEffect(() => {
+    // Only fetch suggestions if the destination has a value
     if (formData.destination) {
-      fetchSuggestions(formData.destination);
+      const handler = setTimeout(() => {
+        fetchSuggestions(formData.destination);
+      }, 500); // Debounce to prevent too many API calls
+      return () => clearTimeout(handler);
+    } else {
+      setSuggestions(null); // Clear suggestions when destination input is empty
     }
   }, [formData.destination]);
 
@@ -87,7 +108,9 @@ const PlanTrip = () => {
     setTripPlan(null);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/trip/plan', {
+      // Use the environment variable for the Python API base URL
+      const baseUrl = process.env.REACT_APP_PYTHON_API || "http://localhost:5000";
+      const response = await axios.post(`${baseUrl}/api/trip/plan`, {
         destination: formData.destination,
         budget: formData.budget,
         preferences: {
@@ -107,14 +130,14 @@ const PlanTrip = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 font-inter">
       {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-gray-200">
+      <div className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-gray-200 rounded-b-xl">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center gap-4">
             <Link
               to="/"
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors rounded-full p-2 hover:bg-gray-100"
             >
               <ArrowLeft size={20} />
               <span>Back to Home</span>
@@ -173,8 +196,8 @@ const PlanTrip = () => {
                       key={budget.value}
                       className={`cursor-pointer p-3 border rounded-lg transition-all ${
                         formData.budget === budget.value
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-300 hover:border-gray-400'
+                          ? 'border-blue-500 bg-blue-50 shadow-md'
+                          : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
                       }`}
                     >
                       <input
@@ -207,8 +230,8 @@ const PlanTrip = () => {
                       key={style.value}
                       className={`cursor-pointer p-3 border rounded-lg transition-all ${
                         formData.travelStyle === style.value
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-300 hover:border-gray-400'
+                          ? 'border-blue-500 bg-blue-50 shadow-md'
+                          : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
                       }`}
                     >
                       <input
@@ -281,7 +304,7 @@ const PlanTrip = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
               >
                 {loading ? (
                   <div className="flex items-center justify-center">
@@ -301,7 +324,7 @@ const PlanTrip = () => {
             {suggestions && (
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-white/20">
                 <h3 className="text-xl font-bold text-gray-800 mb-4">
-                  <Star className="inline mr-2" size={20} />
+                  <Star className="inline mr-2 text-yellow-500" size={20} />
                   About {formData.destination}
                 </h3>
                 
@@ -309,7 +332,7 @@ const PlanTrip = () => {
                   <div>
                     <h4 className="font-semibold text-gray-700 mb-2">Top Cities</h4>
                     <div className="flex flex-wrap gap-2">
-                      {suggestions.cities.map((city, index) => (
+                      {suggestions.cities && suggestions.cities.map((city, index) => (
                         <span key={index} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
                           {city}
                         </span>
@@ -320,7 +343,7 @@ const PlanTrip = () => {
                   <div>
                     <h4 className="font-semibold text-gray-700 mb-2">Highlights</h4>
                     <div className="flex flex-wrap gap-2">
-                      {suggestions.highlights.map((highlight, index) => (
+                      {suggestions.highlights && suggestions.highlights.map((highlight, index) => (
                         <span key={index} className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
                           {highlight}
                         </span>
@@ -378,7 +401,7 @@ const PlanTrip = () => {
                   <div>
                     <p className="font-semibold mb-2">Activities</p>
                     <div className="flex flex-wrap gap-2">
-                      {tripPlan.activities.map((activity, index) => (
+                      {tripPlan.activities && tripPlan.activities.map((activity, index) => (
                         <span key={index} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
                           {activity}
                         </span>
@@ -389,7 +412,7 @@ const PlanTrip = () => {
                   <div>
                     <p className="font-semibold mb-2">Recommendations</p>
                     <ul className="space-y-1">
-                      {tripPlan.recommendations.map((rec, index) => (
+                      {tripPlan.recommendations && tripPlan.recommendations.map((rec, index) => (
                         <li key={index} className="flex items-start gap-2 text-sm text-gray-600">
                           <CheckCircle className="text-green-500 mt-0.5" size={14} />
                           {rec}
@@ -407,4 +430,4 @@ const PlanTrip = () => {
   );
 };
 
-export default PlanTrip; 
+export default PlanTrip;

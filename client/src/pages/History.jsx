@@ -14,7 +14,7 @@ const History = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await axios.get(`http://localhost:5000/api/info/history/${selected_city}`);
+      const res = await axios.get(`${process.env.REACT_APP_NODE_API}/api/info/history/${selected_city}`);
       setHistory(res.data.history);
     } catch (err) {
       console.error('Error fetching history:', err);

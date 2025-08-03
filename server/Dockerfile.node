@@ -1,0 +1,17 @@
+FROM node:18-bullseye
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files and install deps
+COPY package*.json ./
+RUN npm install
+
+# Copy app code
+COPY . .
+
+# Expose your backend port (adjust if needed)
+EXPOSE 5000
+
+# Start the app
+CMD ["npm", "start"]

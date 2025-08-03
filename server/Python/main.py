@@ -52,7 +52,7 @@ except Exception as e:
 model = None
 model_features = []
 try:
-    model = joblib.load(r"../ML/modelforHotels/hotel_price_model.pkl")
+    model = joblib.load("ML/modelforHotels/hotel_price_model.pkl")
     logger.info("✅ ML model loaded successfully")
     
     # Try to get model feature names if available
@@ -71,7 +71,7 @@ except Exception as e:
 # Load backup CSV dataset
 sample_data = pd.DataFrame()
 try:
-    sample_data = pd.read_csv(r"../data/enhanced_hotels_dataset.csv")
+    sample_data = pd.read_csv("data/enhanced_hotels_dataset.csv")
     logger.info(f"✅ Sample CSV data loaded: {len(sample_data)} hotels")
     logger.info(f"CSV columns: {sample_data.columns.tolist()}")
 except Exception as e:

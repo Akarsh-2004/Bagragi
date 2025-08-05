@@ -1,6 +1,9 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, MessageCircle, X, Bot, User, Loader2 } from 'lucide-react';
-import axios from 'axios';
+import React, { useState, useRef, useEffect } from "react";
+import { Send, MessageCircle, X, Bot, User, Loader2 } from "lucide-react";
+import axios from "axios";
+
+const PYTHON_API_URL = "https://bagragi-python-latest.onrender.com";
+const NODE_API_URL = "https://bagragi-node-latest.onrender.com";
 
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -8,14 +11,13 @@ const Chatbot = () => {
     {
       id: 1,
       text: "Hello! I'm your travel assistant. I can help you plan trips, find hotels, explore destinations, and answer any travel-related questions. How can I help you today?",
-      sender: 'bot',
-      timestamp: new Date()
-    }
+      sender: "bot",
+      timestamp: new Date(),
+    },
   ]);
-  const [inputMessage, setInputMessage] = useState('');
+  const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
-  // No longer need chatModalRef for outside click as it's full page
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -25,176 +27,137 @@ const Chatbot = () => {
     scrollToBottom();
   }, [messages]);
 
-  // When the chatbot opens, prevent body scrolling
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    // Cleanup function
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen]);
+  const handleToggleChatbot = () => {
+    setIsOpen((prev) => !prev);
+  };
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!inputMessage.trim() || isLoading) return;
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim()) return;
 
-    const userMessage = {
-      id: Date.now(),
+    const newUserMessage = {
+      id: messages.length + 1,
       text: inputMessage,
-      sender: 'user',
-      timestamp: new Date()
+      sender: "user",
+      timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
-    setInputMessage('');
+    setMessages((prevMessages) => [...prevMessages, newUserMessage]);
+    setInputMessage("");
     setIsLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/chatbot/chat', {
-        message: inputMessage
+      const response = await axios.post(`${PYTHON_API_URL}/api/chat`, {
+        message: inputMessage,
       });
 
-      const botMessage = {
-        id: Date.now() + 1,
-        text: response.data.response,
-        sender: 'bot',
-        timestamp: new Date()
+      const botReply = {
+        id: messages.length + 2,
+        text: response.data.reply || "Sorry, I didn't understand that.",
+        sender: "bot",
+        timestamp: new Date(),
       };
 
-      setMessages(prev => [...prev, botMessage]);
+      setMessages((prevMessages) => [...prevMessages, botReply]);
     } catch (error) {
-      console.error('Chatbot error:', error);
-      const errorMessage = {
-        id: Date.now() + 1,
-        text: "Oops! I couldn't connect to my brain. Please try again in a moment!",
-        sender: 'bot',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        {
+          id: messages.length + 2,
+          text: "Sorry, there was an error contacting the assistant.",
+          sender: "bot",
+          timestamp: new Date(),
+        },
+      ]);
+      console.error("Chatbot error:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const formatTime = (timestamp) => {
-    return timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSendMessage();
+    }
   };
 
   return (
-    <>
-      {/* Chatbot Button */}
-      <button
-        onClick={() => setIsOpen(true)}
-        className="chatbot-open-button fixed bottom-6 right-6 bg-gradient-to-br from-blue-600 to-purple-600 text-white p-4 rounded-full shadow-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 z-[100] hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-blue-300"
-        aria-label="Open travel assistant chatbot"
-        title="Open Travel Assistant"
-      >
-        <MessageCircle size={24} />
-      </button>
+    <div className="fixed bottom-6 right-6 z-50">
+      {!isOpen ? (
+        <button
+          onClick={handleToggleChatbot}
+          className="bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg"
+          aria-label="Open chatbot"
+        >
+          <MessageCircle size={24} />
+        </button>
+      ) : (
+        <div className="w-80 sm:w-96 h-[32rem] flex flex-col bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between bg-blue-600 text-white p-4">
+            <div className="flex items-center gap-2">
+              <Bot size={20} />
+              <span className="font-semibold">Travel Assistant</span>
+            </div>
+            <button onClick={handleToggleChatbot} aria-label="Close chatbot">
+              <X size={20} />
+            </button>
+          </div>
 
-      {/* Full-Page Chatbot Modal */}
-      {isOpen && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center z-[101] backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-none shadow-2xl w-full h-full flex flex-col transform transition-all duration-300 animate-fade-in-scale">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-5 rounded-none flex items-center justify-between shadow-md">
-              <div className="flex items-center gap-4">
-                <Bot size={28} className="text-blue-200" />
-                <div>
-                  <h3 className="font-semibold text-xl">Your Travel Buddy</h3>
-                  <p className="text-sm text-blue-100 opacity-90">Ready to assist your adventures!</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="text-white hover:text-blue-100 transition-colors p-2 rounded-full hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/50"
-                aria-label="Close chatbot"
-                title="Close Chatbot"
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
+            {messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex ${
+                  msg.sender === "user" ? "justify-end" : "justify-start"
+                }`}
               >
-                <X size={24} />
-              </button>
-            </div>
-
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-gray-50 custom-scrollbar">
-              {messages.map((message) => (
                 <div
-                  key={message.id}
-                  className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`max-w-[75%] rounded-lg px-4 py-2 text-sm shadow ${
+                    msg.sender === "user"
+                      ? "bg-blue-100 text-blue-800"
+                      : "bg-white text-gray-800"
+                  }`}
                 >
-                  <div
-                    className={`max-w-[85%] rounded-xl px-4 py-3 shadow-sm relative ${
-                      message.sender === 'user'
-                        ? 'bg-blue-500 text-white rounded-br-none'
-                        : 'bg-gray-200 text-gray-800 rounded-bl-none'
-                    }`}
-                  >
-                    <div className="flex items-start gap-2">
-                      {message.sender === 'bot' && (
-                        <Bot size={18} className="text-blue-600 mt-0.5 flex-shrink-0" />
-                      )}
-                      <div className="flex-1">
-                        <p className="text-base whitespace-pre-wrap leading-relaxed">{message.text}</p>
-                        <p className={`text-xs mt-1 opacity-75 ${
-                          message.sender === 'user' ? 'text-blue-100' : 'text-gray-600'
-                        }`}>
-                          {formatTime(message.timestamp)}
-                        </p>
-                      </div>
-                      {message.sender === 'user' && (
-                        <User size={18} className="text-blue-100 mt-0.5 flex-shrink-0" />
-                      )}
-                    </div>
-                  </div>
+                  {msg.text}
                 </div>
-              ))}
-              
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-gray-200 rounded-xl px-4 py-3 shadow-sm">
-                    <div className="flex items-center gap-2">
-                      <Bot size={18} className="text-blue-600" />
-                      <Loader2 size={18} className="animate-spin text-blue-600" />
-                      <span className="text-base text-gray-700">Thinking...</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Input */}
-            <form onSubmit={handleSendMessage} className="p-5 border-t border-gray-200 bg-white rounded-none">
-              <div className="flex gap-4">
-                <input
-                  type="text"
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder="Ask me anything about travel..."
-                  className="flex-1 p-3 border border-gray-300 rounded-full text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-700 placeholder-gray-400 focus:outline-none"
-                  disabled={isLoading}
-                  aria-label="Type your message"
-                />
-                <button
-                  type="submit"
-                  disabled={isLoading || !inputMessage.trim()}
-                  className="bg-gradient-to-br from-blue-600 to-purple-600 text-white p-3 rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
-                  aria-label="Send message"
-                  title="Send Message"
-                >
-                  <Send size={22} />
-                </button>
               </div>
-            </form>
+            ))}
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="bg-white text-gray-800 px-4 py-2 rounded-lg text-sm shadow flex items-center gap-2">
+                  <Loader2 className="animate-spin" size={14} />
+                  Typing...
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input */}
+          <div className="p-3 border-t border-gray-200 bg-white flex gap-2">
+            <input
+              type="text"
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type your message..."
+              className="flex-1 px-4 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Message input"
+            />
+            <button
+              onClick={handleSendMessage}
+              disabled={isLoading}
+              className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg"
+              aria-label="Send message"
+            >
+              <Send size={18} />
+            </button>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 

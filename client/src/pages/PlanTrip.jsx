@@ -18,7 +18,6 @@ const PlanTrip = () => {
     setFormData((prev) => {
       let parsedValue = value;
       if (name === "groupSize" || name === "duration") {
-        // Ensure that empty string remains empty, otherwise parse
         parsedValue = value === "" ? "" : parseInt(value);
       } else if (name === "budget") {
         parsedValue = value;
@@ -35,7 +34,7 @@ const PlanTrip = () => {
 
   const mapBudget = (value) => {
     const num = parseInt(value);
-    if (isNaN(num) || num < 0) return "low"; // Handle NaN or negative for budget mapping
+    if (isNaN(num) || num < 0) return "low";
     if (num < 1000) return "low";
     if (num < 2500) return "medium";
     return "high";
@@ -43,10 +42,9 @@ const PlanTrip = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(""); // Clear previous errors
-    setPlan(null); // Clear previous plan
+    setError("");
+    setPlan(null);
 
-    // Frontend validation for required fields
     if (!formData.destination.trim()) {
       setError("Please enter a destination.");
       return;
@@ -68,7 +66,7 @@ const PlanTrip = () => {
 
     try {
       const response = await axios.post(
-        "https://bagragi-node-latest.onrender.com/api/trips/plan", // <-- FIXED: Changed /api/trip to /api/trips
+        "https://bagragi-node-latest.onrender.com/api/trips/plan",
         {
           destination: normalized,
           budget: mapBudget(formData.budget),
@@ -79,39 +77,40 @@ const PlanTrip = () => {
           },
         }
       );
-      setPlan(response.data.tripPlan); // Access the tripPlan object from the response
-      setError(""); // Clear any error if successful
+      setPlan(response.data.tripPlan);
+      setError("");
     } catch (error) {
       console.error("Error creating trip plan:", error);
-      // More specific error message for 404
       if (error.response && error.response.status === 404) {
-        setError("Trip plan API endpoint not found. Check backend deployment and routes (expecting /api/trips/plan).");
+        setError("Trip plan API endpoint not found.");
       } else {
         setError(
-          error.response?.data?.error || error.message || "Unknown error creating trip"
+          error.response?.data?.error ||
+          error.message ||
+          "Unknown error creating trip"
         );
       }
-      setPlan(null); // Ensure plan is null on error
+      setPlan(null);
     }
   };
 
   const fetchSuggestions = async () => {
     if (!formData.destination.trim()) {
-      setSuggestions([]); // Clear suggestions if destination is empty
+      setSuggestions([]);
       return;
     }
     const normalized = normalizeDestination(formData.destination);
     try {
       const res = await axios.get(
-        `https://bagragi-node-latest.onrender.com/api/trips/suggestions/${normalized}` // <-- FIXED: Changed /api/trip to /api/trips
+        `https://bagragi-node-latest.onrender.com/api/trips/suggestions/${normalized}`
       );
-      setSuggestions(res.data.suggestions.cities || []); // Access cities or default to empty array
+      setSuggestions(res.data.suggestions.cities || []);
     } catch (error) {
       console.error("Error fetching suggestions:", error);
       setError(
         error.response?.data?.error || error.message || "Error fetching suggestions"
       );
-      setSuggestions([]); // Clear suggestions on error
+      setSuggestions([]);
     }
   };
 
@@ -204,11 +203,38 @@ const PlanTrip = () => {
       )}
 
       {plan && (
-        <div className="text-white mt-6">
-          <h3 className="font-bold mb-2">Your Trip Plan:</h3>
-          <pre className="whitespace-pre-wrap bg-white/10 p-3 rounded-md">
-            {JSON.stringify(plan, null, 2)}
-          </pre>
+        <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl mt-6 text-white space-y-4">
+          <h3 className="text-2xl font-bold">🎉 Your Trip Plan</h3>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p><span className="font-semibold">📍 Destination:</span> {plan.destination}</p>
+              <p><span className="font-semibold">💰 Budget:</span> {plan.budget}</p>
+              <p><span className="font-semibold">🕒 Duration:</span> {plan.duration}</p>
+            </div>
+            <div>
+              <p><span className="font-semibold">🏨 Accommodation:</span> {plan.accommodation}</p>
+              <p><span className="font-semibold">💸 Estimated Cost:</span> {plan.estimatedCost}</p>
+            </div>
+          </div>
+
+          <div>
+            <p className="font-semibold mb-1">🧘 Activities:</p>
+            <ul className="list-disc ml-6 space-y-1">
+              {plan.activities.map((activity, idx) => (
+                <li key={idx}>{activity}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <p className="font-semibold mb-1">📌 Recommendations:</p>
+            <ul className="list-disc ml-6 space-y-1">
+              {plan.recommendations.map((rec, idx) => (
+                <li key={idx}>{rec}</li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
     </div>
